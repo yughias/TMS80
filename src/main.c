@@ -3,7 +3,11 @@
 
 #include <string.h>
 
+char rom_path[FILENAME_MAX];
+char bios_path[FILENAME_MAX];
 console_t console;
+
+void parse_input();
 
 void setup(){
     char* path = SDL_GetBasePath();
@@ -12,10 +16,9 @@ void setup(){
     setScaleMode(NEAREST);
     setTitle("TMS80");
 
-    char rom_path[FILENAME_MAX];
-    strncpy(rom_path, getArgv(1), FILENAME_MAX - 1);
+    parse_input();
 
-    console_init(&console, rom_path);
+    console_init(&console, rom_path, bios_path);
 
     sn76489_t* apu = &console.apu;
     apu->audioSpec.freq = 44100;
@@ -40,6 +43,7 @@ void loop(){
             break;
 
             case SDLK_F2:
+            if(console.type == SMS)
             console.force_paddle_controller ^= 1;
             break;
         }
@@ -51,4 +55,35 @@ void loop(){
         printf("big sprites!\n");
     if((console.vdp.regs[0] & (1 << 2)) && (console.vdp.regs[1] & (0b11 << 3)))
         printf("extra height!\n");
+}
+
+void parse_input(){
+    enum {SEARCH_STAGE, ROM_STAGE, BIOS_STAGE} stage = SEARCH_STAGE;
+    for(int i = 1; i < getArgc(); i++){
+        const char* arg = getArgv(i);
+        switch(stage){
+            case SEARCH_STAGE:
+            if(!strcmp("-b", arg) || !strcmp("--bios", arg)){
+                stage = BIOS_STAGE;
+            } else if(!strcmp("-r", arg) || !strcmp("--rom", arg))
+                stage = ROM_STAGE;
+            else
+                strncpy(rom_path, arg, FILENAME_MAX - 1);
+            break;
+
+            case ROM_STAGE:
+            strncpy(rom_path, arg, FILENAME_MAX - 1);
+            stage = SEARCH_STAGE;
+            break;
+            
+            case BIOS_STAGE:
+            strncpy(bios_path, arg, FILENAME_MAX - 1);
+            stage = SEARCH_STAGE;
+            break;
+        }
+    }
+    if(!strcmp(rom_path, ""))
+        printf("NO INPUT ROM!\n");
+    if(!strcmp(bios_path, ""))
+        printf("NO INPUT BIOS!\n");
 }

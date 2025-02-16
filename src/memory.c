@@ -39,6 +39,31 @@ void sg_sc_ram_adapter_writeMemory(z80_t* z80, uint16_t addr, uint8_t byte){
     console->RAM[addr] = byte;
 }
 
+uint8_t sms_bios_readMemory(z80_t* z80, uint16_t addr){
+    console_t* console = z80->master;
+
+    if(addr < 0xC000){
+        uint8_t bank_idx = addr >> 14;
+        uint32_t banked_addr = ((addr & 0x3FFF) + console->banks[bank_idx]*0x4000);
+        return console->bios[banked_addr % console->bios_size];
+    }
+
+    return console->RAM[addr & ((1 << 13) - 1)];
+}
+
+void sms_bios_writeMemory(z80_t* z80, uint16_t addr, uint8_t byte){
+    console_t* console = z80->master;
+
+    if(addr == 0xFFFC){
+        console->ram_bank = byte;
+    }
+    if(addr >= 0xFFFD && addr <= 0xFFFF)
+        console->banks[addr - 0xFFFD] = byte;
+
+    if(addr >= 0xC000)
+        console->RAM[addr & ((1 << 13) - 1)] = byte;
+}
+
 uint8_t sms_readMemory(z80_t* z80, uint16_t addr){
     console_t* console = z80->master;
 
@@ -59,7 +84,6 @@ void sms_writeMemory(z80_t* z80, uint16_t addr, uint8_t byte){
     console_t* console = z80->master;
 
     if(addr == 0xFFFC){
-        printf("RAM %X\n", byte);
         console->ram_bank = byte;
     }
     if(addr >= 0xFFFD && addr <= 0xFFFF)
@@ -68,13 +92,6 @@ void sms_writeMemory(z80_t* z80, uint16_t addr, uint8_t byte){
     if((console->ram_bank & (1 << 3)) && addr >= 0x8000 && addr < 0xC000){
         console->RAM[(1 << 13) + (addr - 0x8000)] = byte;
     }
-
-    if(addr >= 0xC000)
-        console->RAM[addr & ((1 << 13) - 1)] = byte;
-}
-
-void sms_no_mapper_writeMemory(z80_t* z80, uint16_t addr, uint8_t byte){
-    console_t* console = z80->master;
 
     if(addr >= 0xC000)
         console->RAM[addr & ((1 << 13) - 1)] = byte;
@@ -112,6 +129,16 @@ void console_writeIO(z80_t* z80, uint16_t addr, uint8_t byte){
     vdp_t* vdp = &console->vdp;
     sn76489_t* apu = &console->apu;
     addr &= 0xFF;
+
+    if(console->type == SMS && addr == 0x3E){
+        if((byte & (1 << 3))){
+            console->z80.readMemory = sms_readMemory;
+            console->z80.writeMemory = sms_writeMemory;
+        } else {
+            console->z80.readMemory = sms_bios_readMemory;
+            console->z80.writeMemory = sms_bios_writeMemory;
+        }
+    }
 
     if(console->has_keyboard && addr == 0xDE)
         console->keypad_reg = byte;

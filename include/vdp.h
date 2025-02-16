@@ -37,7 +37,7 @@ void vdp_write_to_data_port(vdp_t* vdp, uint8_t byte);
 uint8_t vdp_read_status_register(vdp_t* vdp, z80_t* z80);
 void vdp_fire_interrupt(vdp_t* vdp, z80_t* z80, bool is_vblank);
 uint8_t vdp_get_v_counter(vdp_t* vdp);
-
+void vdp_skip_bios(vdp_t* vdp);
 void vdp_render_line(vdp_t* vdp, int line);
 
 #endif

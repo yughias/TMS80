@@ -37,7 +37,23 @@ static SDL_Scancode keypad_row_b[8][4] = {
     { NO_KEY,         NO_KEY,    NO_KEY,     NO_KEY      }
 };
 
-void console_init(console_t* console, const char* filename){
+void load_file(const char* filename, uint8_t** buffer, size_t* size){
+    FILE* fptr = fopen(filename, "rb");
+    if(!fptr){
+        printf("can't open file: %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    fseek(fptr, 0, SEEK_END);
+    *size = ftell(fptr);
+    rewind(fptr);
+
+    *buffer = malloc(*size);
+    fread(*buffer, 1, *size, fptr);
+    fclose(fptr);
+}
+
+void console_init(console_t* console, const char* rom_path, const char* bios_path){
     memset(console, 0, sizeof(console_t));
     z80_init(&console->z80);
     console->z80.master = console;
@@ -47,8 +63,8 @@ void console_init(console_t* console, const char* filename){
     console->keypad_reg = 0x7;
 
     if(
-        strstr(filename, "(Europe)") || strstr(filename, "(E)") ||
-        strstr(filename, "(Brazil)") || strstr(filename, "[E]")
+        strstr(rom_path, "(Europe)") || strstr(rom_path, "(E)") ||
+        strstr(rom_path, "(Brazil)") || strstr(rom_path, "[E]")
     ){
         CONSOLE_SET_REGION(console, PAL);
         printf("PAL!\n");
@@ -60,27 +76,25 @@ void console_init(console_t* console, const char* filename){
     for(int i = 0; i < 3; i++)
         console->banks[i] = i;
 
-    console->type = console_detect_type(filename);
+    if(strcmp(rom_path, ""))
+        load_file(rom_path, &console->cartridge, &console->cartridge_size);
+    else {
+        console->cartridge = malloc(1);
+        console->cartridge_size = 1;
+    }
+
+    if(strcmp(bios_path, "")){
+        load_file(bios_path, &console->bios, &console->bios_size);
+        console->type = console_detect_type(bios_path);
+    } else
+        console->type = console_detect_type(rom_path);
+    
     console->has_keyboard = console->type == SC3000;
 
     if(console->type == CONSOLE_UNKNOWN){
         printf("can't detect console!\n");
         exit(EXIT_FAILURE);
     }
-
-    FILE* fptr = fopen(filename, "rb");
-    if(!fptr){
-        printf("can't open rom!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    fseek(fptr, 0, SEEK_END);
-    console->cartridge_size = ftell(fptr);
-    rewind(fptr);
-
-    console->cartridge = malloc(console->cartridge_size);
-    fread(console->cartridge, 1, console->cartridge_size, fptr);
-    fclose(fptr);
 
     switch(console->type){
         case SG1000:
@@ -90,8 +104,13 @@ void console_init(console_t* console, const char* filename){
         break;
 
         case SMS:
-        console->z80.readMemory = sms_readMemory;
-        console->z80.writeMemory = console->cartridge_size <= 0xC000 ? sms_no_mapper_writeMemory : sms_writeMemory;
+        if(console->bios){
+            console->z80.readMemory = sms_bios_readMemory;
+            console->z80.writeMemory = sms_bios_writeMemory;
+        } else {
+            console->z80.readMemory = sms_readMemory;
+            console->z80.writeMemory = sms_writeMemory;
+        }
         break;
 
         default:
@@ -124,10 +143,10 @@ bool console_detect_ram_adapter(uint8_t* cartridge, size_t cartridge_size){
     return false;
 }
 
-CONSOLE_TYPE console_detect_type(const char* filename){
-    const char* dot = strrchr(filename, '.');
+CONSOLE_TYPE console_detect_type(const char* rom_path){
+    const char* dot = strrchr(rom_path, '.');
 
-    if(!dot || dot == filename)
+    if(!dot || dot == rom_path)
         return CONSOLE_UNKNOWN;
 
     if(!strcmp(dot, ".sg"))

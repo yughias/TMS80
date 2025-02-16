@@ -13,6 +13,10 @@ for(int screenX = startX; screenX < endX; screenX++){ \
     pixels[screenX + screenY * width] = vdp_get_color(vdp, col_idx); \
 }
 
+static uint8_t sms_vdp_skip_bios[16] = {
+    0x36, 0xE0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFB, 0x0, 0x0, 0x0, 0xFF, 0x0, 0x0, 0x0, 0x0, 0x0
+};
+
 static uint8_t rgb_colors_sg[16][3] = {
     {0x00, 0x00, 0x00},
     {0x00, 0x00, 0x00},
@@ -497,4 +501,8 @@ uint8_t vdp_read_status_register(vdp_t* vdp, z80_t* z80){
     vdp->control_port_flag = 0;
     z80->INTERRUPT_PENDING = false;
     return out;
+}
+
+void vdp_skip_bios(vdp_t* vdp){
+    memcpy(vdp->regs, sms_vdp_skip_bios, sizeof(sms_vdp_skip_bios));
 }

@@ -36,6 +36,9 @@ typedef struct console_t
     uint8_t* cartridge;
     size_t cartridge_size;
 
+    uint8_t* bios;
+    size_t bios_size;
+
     bool has_keyboard;
     bool force_paddle_controller;
     bool paddle_status;
@@ -47,7 +50,7 @@ typedef struct console_t
     uint8_t RAM[RAM_SIZE];
 } console_t;
 
-void console_init(console_t* console, const char* filename);
+void console_init(console_t* console, const char* rom_path, const char* bios_path);
 void console_run_frame(console_t* console);
 
 CONSOLE_TYPE console_detect_type(const char* filename);
