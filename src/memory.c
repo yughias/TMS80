@@ -66,13 +66,13 @@ void sms_bios_writeMemory(z80_t* z80, uint16_t addr, uint8_t byte){
 
 uint8_t sms_readMemory(z80_t* z80, uint16_t addr){
     console_t* console = z80->master;
-
+    
     if(addr < 0xC000){
         uint8_t bank_idx = addr >> 14;
         if((console->ram_bank & (1 << 3)) && addr >= 0x8000)
             return console->RAM[(1 << 13) + (addr - 0x8000)];
         if(addr < 1024)
-            return console->cartridge[addr];
+            return console->cartridge[addr % console->cartridge_size];
         uint32_t banked_addr = ((addr & 0x3FFF) + console->banks[bank_idx]*0x4000);
         return console->cartridge[banked_addr % console->cartridge_size];
     }
