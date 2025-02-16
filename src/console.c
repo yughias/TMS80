@@ -79,8 +79,9 @@ void console_init(console_t* console, const char* rom_path, const char* bios_pat
     if(strcmp(rom_path, ""))
         load_file(rom_path, &console->cartridge, &console->cartridge_size);
     else {
-        console->cartridge = malloc(1);
-        console->cartridge_size = 1;
+        console->cartridge = malloc(1 << 10);
+        memset(console->cartridge, 0xFF, 1 << 10);
+        console->cartridge_size = 1 << 10;
     }
 
     if(strcmp(bios_path, "")){

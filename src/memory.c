@@ -72,7 +72,7 @@ uint8_t sms_readMemory(z80_t* z80, uint16_t addr){
         if((console->ram_bank & (1 << 3)) && addr >= 0x8000)
             return console->RAM[(1 << 13) + (addr - 0x8000)];
         if(addr < 1024)
-            return console->cartridge[addr % console->cartridge_size];
+            return console->cartridge[addr];
         uint32_t banked_addr = ((addr & 0x3FFF) + console->banks[bank_idx]*0x4000);
         return console->cartridge[banked_addr % console->cartridge_size];
     }
