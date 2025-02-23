@@ -91,6 +91,7 @@ void console_init(console_t* console, const char* rom_path, const char* bios_pat
         console->type = console_detect_type(rom_path);
     
     console->has_keyboard = console->type == SC3000;
+    console->vdp.cram_size = console->type == GG ? CRAM_SIZE_GG : CRAM_SIZE_SMS;
 
     if(console->type == CONSOLE_UNKNOWN){
         printf("can't detect console!\n");
@@ -105,7 +106,8 @@ void console_init(console_t* console, const char* rom_path, const char* bios_pat
         break;
 
         case SMS:
-        if(console->bios){
+        case GG:
+        if(strcmp("", bios_path)){
             console->z80.readMemory = sms_bios_readMemory;
             console->z80.writeMemory = sms_bios_writeMemory;
         } else {
@@ -160,6 +162,9 @@ CONSOLE_TYPE console_detect_type(const char* rom_path){
     if(!strcmp(dot, ".sms"))
         return SMS;
 
+    if(!strcmp(dot, ".gg"))
+        return GG;
+
     return CONSOLE_UNKNOWN;
 }
 
@@ -198,6 +203,15 @@ uint8_t console_get_keypad_b(console_t* console){
     return out;
 }
 
+uint8_t gg_get_start_button(){
+    const Uint8* keystate = SDL_GetKeyboardState(NULL);
+
+    if(keystate[SDL_SCANCODE_RETURN])
+        return 0x40;
+
+    return 0xC0;
+}
+
 void console_run_frame(console_t* console){
     z80_t* z80 = &console->z80;
     vdp_t* vdp = &console->vdp;
@@ -218,7 +232,7 @@ void console_run_frame(console_t* console){
             vdp->v_counter = old_line;
 
             if(vdp->regs[0] & (1 << 4)){
-                if(old_line <= SCREEN_HEIGHT){
+                if(old_line <= SCREEN_HEIGHT_SMS){
                     vdp->line_reg -= 1;
                     if(vdp->line_reg == 0xFF){
                         vdp_fire_interrupt(vdp, z80, false);
@@ -229,13 +243,13 @@ void console_run_frame(console_t* console){
                 }
             }
 
-            if(old_line < SCREEN_HEIGHT){
+            if(old_line < SCREEN_HEIGHT_SMS){
                 if(old_line == 0)
                     vdp->scroll_y = vdp->regs[9];
                 vdp_render_line(vdp, old_line);
             }
 
-            if(old_line == SCREEN_HEIGHT){
+            if(old_line == SCREEN_HEIGHT_SMS){
                 vdp_fire_interrupt(vdp, z80, true);
             }
         }

@@ -20,7 +20,7 @@
 
 #define RAM_SIZE 0x10000
 
-typedef enum CONSOLE_TYPE {CONSOLE_UNKNOWN, SG1000, SC3000, SMS} CONSOLE_TYPE;
+typedef enum CONSOLE_TYPE {CONSOLE_UNKNOWN, SG1000, SC3000, SMS, GG} CONSOLE_TYPE;
 
 typedef struct console_t
 {
@@ -58,6 +58,7 @@ bool console_detect_ram_adapter(uint8_t* cartridge, size_t cartridge_size);
 
 uint8_t console_get_keypad_a(console_t* console);
 uint8_t console_get_keypad_b(console_t* console);
+uint8_t gg_get_start_button();
 
 
 #endif

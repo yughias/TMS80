@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static uint8_t gg_internal_regs[] = {0xC0, 0x7F, 0xFF, 0x00, 0xFF, 0x00, 0xFF};
+
 uint8_t sg_sc_readMemory(z80_t* z80, uint16_t addr){
     console_t* console = z80->master;
 
@@ -102,6 +104,15 @@ uint8_t console_readIO(z80_t* z80, uint16_t addr){
     vdp_t* vdp = &console->vdp;
     addr &= 0xFF;
 
+    
+    if(console->type == GG){
+        if(!addr)
+            return gg_get_start_button();
+
+        if(addr <= 0x6)
+            return gg_internal_regs[addr];
+    }
+
     if(addr >= 0x40 && addr <= 0x7F){
         if(!(addr & 1))
             return vdp_get_v_counter(vdp);
@@ -134,7 +145,7 @@ void console_writeIO(z80_t* z80, uint16_t addr, uint8_t byte){
         if((byte & (1 << 3))){
             console->z80.readMemory = sms_readMemory;
             console->z80.writeMemory = sms_writeMemory;
-        } else {
+        } else if(console->bios) {
             console->z80.readMemory = sms_bios_readMemory;
             console->z80.writeMemory = sms_bios_writeMemory;
         }

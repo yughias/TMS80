@@ -10,7 +10,7 @@ for(int screenX = startX; screenX < endX; screenX++){ \
     bool priority = tile_attr & (1 << 12); \
     uint8_t col_idx = vdp_sms_get_tile_color_index(vdp, px, py, tile_attr); \
     drawn_pixels[screenX] = priority && (col_idx & 0xF); \
-    pixels[screenX + screenY * width] = vdp_get_color(vdp, col_idx); \
+    vdp->framebuffer[screenX + screenY * SCREEN_WIDTH_SMS] = vdp_get_color(vdp, col_idx); \
 }
 
 static uint8_t sms_vdp_skip_bios[16] = {
@@ -136,9 +136,16 @@ uint8_t vdp_read_from_data_port(vdp_t* vdp){
 }
 
 void vdp_write_to_data_port(vdp_t* vdp, uint8_t byte){
-    if(vdp->cram_dst)
-        vdp->CRAM[vdp->vram_address & 0x1F] = byte;
-    else
+    if(vdp->cram_dst){
+        if(vdp->cram_size == CRAM_SIZE_GG){
+            if(vdp->vram_address & 1){
+                vdp->CRAM[(vdp->vram_address & ~1) & (vdp->cram_size - 1)] = vdp->cram_latch;
+                vdp->CRAM[vdp->vram_address & (vdp->cram_size - 1)] = byte;  
+            } else 
+                vdp->cram_latch = byte;
+        } else
+            vdp->CRAM[vdp->vram_address & (vdp->cram_size - 1)] = byte;
+    } else
         vdp->VRAM[vdp->vram_address] = byte;
 
     vdp->buffer = byte;
@@ -237,16 +244,16 @@ void vdp_render_tiles_legacy(vdp_t* vdp, int mode, int line){
             bool color_type = (row & (1 << pos));
             uint8_t color_idx = color_type ? foreground_col : background_col;
             uint8_t* rgb_color = rgb_colors_sg[ color_idx ? color_idx : vdp->regs[7] & 0xF ];
-            pixels[(x*8+xx) + (y*8+yy)*width] = color(rgb_color[0], rgb_color[1], rgb_color[2]); 
+            vdp->framebuffer[(x*8+xx) + (y*8+yy)*SCREEN_WIDTH_SMS] = color(rgb_color[0], rgb_color[1], rgb_color[2]); 
         }
     }
 }
 
-void vdp_put_sprite_pixel(int x, int y, vdp_t* vdp, bool* collision_array, bool* drawn_pixels, bool color_type, uint8_t* rgb_color){
-    if(x < 0 || x >= SCREEN_WIDTH)
+void vdp_put_sprite_pixel(int x, int y, vdp_t* vdp, bool* collision_array, bool* drawn_pixels, bool color_type, int col){
+    if(x < 0 || x >= SCREEN_WIDTH_SMS)
         return;
     
-    if(y >= SCREEN_HEIGHT)
+    if(y >= SCREEN_HEIGHT_SMS)
         return;
 
     if(collision_array[x])
@@ -255,7 +262,7 @@ void vdp_put_sprite_pixel(int x, int y, vdp_t* vdp, bool* collision_array, bool*
         collision_array[x] = true;
 
     if(color_type && !drawn_pixels[x]){
-        pixels[x + y*width] = color(rgb_color[0], rgb_color[1], rgb_color[2]); 
+        vdp->framebuffer[x + y*SCREEN_WIDTH_SMS] = col; 
         drawn_pixels[x] = true;
     }
 }
@@ -274,8 +281,8 @@ void vdp_render_text_legacy(vdp_t* vdp, int line){
     uint8_t* tilemap = &vdp->VRAM[tilemap_addr];
 
     for(int x = 0; x < 8; x++){
-        pixels[x + line * width] = background_col;
-        pixels[(SCREEN_WIDTH-1-x) + line * width] = background_col;
+        vdp->framebuffer[x + line * SCREEN_WIDTH_SMS] = background_col;
+        vdp->framebuffer[(SCREEN_WIDTH_SMS-1-x) + line * SCREEN_WIDTH_SMS] = background_col;
     }
 
     for(int i = 0; i < 40; i++){
@@ -287,14 +294,14 @@ void vdp_render_text_legacy(vdp_t* vdp, int line){
             uint8_t pos = 7-x;
             bool color_type = (row & (1 << pos));
             int col = color_type ? foreground_col : background_col;
-            pixels[8 + (i*6+x) + line * width] = col;
+            vdp->framebuffer[8 + (i*6+x) + line * SCREEN_WIDTH_SMS] = col;
         }
     }
 }
 
 void vdp_render_sprites_legacy(vdp_t* vdp, int line){
-    bool collision_array[SCREEN_WIDTH] = { [0 ... 255] = false };
-    bool drawn_pixels[SCREEN_WIDTH] = { [0 ... 255] = false };
+    bool collision_array[SCREEN_WIDTH_SMS] = { [0 ... 255] = false };
+    bool drawn_pixels[SCREEN_WIDTH_SMS] = { [0 ... 255] = false };
 
     uint8_t sprite_size = (vdp->regs[1] & 0b10) ? 16 : 8;
     bool mag_bit = vdp->regs[1] & 0b1;
@@ -329,6 +336,7 @@ void vdp_render_sprites_legacy(vdp_t* vdp, int line){
             yy >>= 1;
         uint8_t* tile_data = &sprite_patterns[sprite_size == 8 ? tile_idx*8 : (tile_idx & 252)*8];
         uint8_t* rgb_color = rgb_colors_sg[color_data];
+        int col = color(rgb_color[0], rgb_color[1], rgb_color[2]);
 
         for(int xx = 0; xx < sprite_size; xx++){
             uint8_t row = tile_data[xx < 8 ? yy : yy+16];
@@ -336,10 +344,10 @@ void vdp_render_sprites_legacy(vdp_t* vdp, int line){
             bool color_type = (row & (1 << pos));
 
             if(!mag_bit) {
-                vdp_put_sprite_pixel(x+xx, line, vdp, collision_array, drawn_pixels, color_type, rgb_color);
+                vdp_put_sprite_pixel(x+xx, line, vdp, collision_array, drawn_pixels, color_type, col);
             } else {
-                vdp_put_sprite_pixel(x+xx*2,   line, vdp, collision_array, drawn_pixels, color_type, rgb_color);
-                vdp_put_sprite_pixel(x+xx*2+1, line, vdp, collision_array, drawn_pixels, color_type, rgb_color);
+                vdp_put_sprite_pixel(x+xx*2,   line, vdp, collision_array, drawn_pixels, color_type, col);
+                vdp_put_sprite_pixel(x+xx*2+1, line, vdp, collision_array, drawn_pixels, color_type, col);
             }   
         }
     }    
@@ -349,8 +357,8 @@ void vdp_render_line_backdrop(vdp_t* vdp, int y){
     uint8_t backdrop_idx = vdp->regs[7] & 0xF;
     uint8_t* rgb_color = rgb_colors_sg[backdrop_idx];
     int col = color(rgb_color[0], rgb_color[1], rgb_color[2]);
-    for(int x = 0; x < SCREEN_WIDTH; x++)
-        pixels[x + y * SCREEN_WIDTH] = col;
+    for(int x = 0; x < SCREEN_WIDTH_SMS; x++)
+        vdp->framebuffer[x + y * SCREEN_WIDTH_SMS] = col;
 }
 
 uint8_t vdp_sms_get_tile_color_index(vdp_t* vdp, uint8_t x, uint8_t y, uint16_t tile_attr){
@@ -383,11 +391,28 @@ uint8_t vdp_sms_get_sprite_color_index(vdp_t* vdp, uint8_t x, uint8_t y, uint8_t
     return out | 0x10;
 }
 
-int vdp_get_color(vdp_t* vdp, int col_idx){
+int sms_get_color(vdp_t* vdp, int col_idx){
     uint8_t rgb222 = vdp->CRAM[col_idx] & 0x3F;
     uint8_t* rgb = rgb_colors_sms[rgb222];
     int col = color(rgb[0], rgb[1], rgb[2]); 
     return col;
+}
+
+int gg_get_color(vdp_t* vdp, int col_idx){
+    uint8_t r = vdp->CRAM[col_idx*2] & 0xF;
+    uint8_t g = vdp->CRAM[col_idx*2] >> 4;
+    uint8_t b = vdp->CRAM[col_idx*2+1] & 0xF;
+    r |= (r << 4);
+    g |= (g << 4);
+    b |= (b << 4);
+    int col = color(r, g, b); 
+    return col;
+}
+
+int vdp_get_color(vdp_t* vdp, int col_idx){
+    if(vdp->cram_size == CRAM_SIZE_SMS)
+        return sms_get_color(vdp, col_idx);
+    return gg_get_color(vdp, col_idx);
 }
 
 void vdp_render_tiles_mode_4(vdp_t* vdp, int y, bool* drawn_pixels){
@@ -404,7 +429,7 @@ void vdp_render_tiles_mode_4(vdp_t* vdp, int y, bool* drawn_pixels){
     if(startX){
         int backdrop_col = vdp_get_color(vdp, 0x10 | (vdp->regs[7] & 0xF));
         for(int i = 0; i < 8; i++)
-            pixels[i + screenY * width] = backdrop_col;
+            vdp->framebuffer[i + screenY * SCREEN_WIDTH_SMS] = backdrop_col;
     }
 
     SMS_RENDER_TILES_LINE(startX, 8*24);
@@ -414,11 +439,11 @@ void vdp_render_tiles_mode_4(vdp_t* vdp, int y, bool* drawn_pixels){
         py = screenY & 7;
     }
 
-    SMS_RENDER_TILES_LINE(8*24, SCREEN_WIDTH);
+    SMS_RENDER_TILES_LINE(8*24, SCREEN_WIDTH_SMS);
 }
 
 void vdp_render_sprites_mode_4(vdp_t* vdp, int y, bool* drawn_pixels){
-    bool collision_array[SCREEN_WIDTH] = { [0 ... 255] = false };
+    bool collision_array[SCREEN_WIDTH_SMS] = { [0 ... 255] = false };
 
     uint16_t sprite_table_addr = ((vdp->regs[5] >> 1) & 0x3F) << 8;
     uint8_t* sprite_table = &vdp->VRAM[sprite_table_addr]; 
@@ -451,8 +476,8 @@ void vdp_render_sprites_mode_4(vdp_t* vdp, int y, bool* drawn_pixels){
             if(hide_left_col && offX < 8)
                 continue;
             uint8_t col_idx = vdp_sms_get_sprite_color_index(vdp, px, py & 7, sprite_tile);
-            uint8_t rgb222 = vdp->CRAM[col_idx] & 0x3F;
-            vdp_put_sprite_pixel(offX, y, vdp, collision_array, drawn_pixels, col_idx != 0x10, rgb_colors_sms[rgb222]);
+            int col = vdp_get_color(vdp, col_idx);
+            vdp_put_sprite_pixel(offX, y, vdp, collision_array, drawn_pixels, col_idx != 0x10, col);
         }
     }
 }
@@ -468,7 +493,7 @@ void vdp_render_line(vdp_t* vdp, int y){
     }
 
     if(vdp->regs[0] & (1 << 2)){
-        bool drawn_pixels[SCREEN_WIDTH] = { [0 ... 255] = false };
+        bool drawn_pixels[SCREEN_WIDTH_SMS] = { [0 ... 255] = false };
         vdp_render_tiles_mode_4(vdp, y, drawn_pixels);
         vdp_render_sprites_mode_4(vdp, y, drawn_pixels);
         return;

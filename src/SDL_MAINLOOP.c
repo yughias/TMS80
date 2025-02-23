@@ -29,6 +29,7 @@ bool isKeyReleased = false;
 keyboard keyPressed;
 keyboard keyReleased;
 button exitButton = SDLK_ESCAPE;
+float aspectRatio;
 
 void (*onExit)() = NULL;
 void (*onKeyPressed)(keyboard) = NULL;
@@ -598,17 +599,26 @@ void setVoidColor(int r, int g, int b){
 
 void calculateRescaleVars(){
     SDL_GetWindowSize(window, &win_width, &win_height);
-    render_ratio = (float)width/height;
     win_ratio = (float)win_width/win_height;
-    if(win_ratio > render_ratio){
-        render_width = (float)width*win_height/height;
+    if(win_ratio > aspectRatio){
+        render_width = (float)aspectRatio*win_height;
         render_height = win_height;
     } else {
         render_width = win_width;
-        render_height = height*win_width/width;
+        render_height = win_width/aspectRatio;
     }
     localX = win_width/2-render_width/2;
     localY = win_height/2-render_height/2;
+}
+
+void setWindowSize(int w, int h){
+    SDL_SetWindowSize(window, w, h);
+    calculateRescaleVars();
+}
+
+void setAspectRatio(float ratio){
+    aspectRatio = ratio;
+    calculateRescaleVars();
 }
 
 void renderBufferToWindow(){

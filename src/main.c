@@ -3,6 +3,8 @@
 
 #include <string.h>
 
+#define LERP(a, b, t) (a + t * (b - a))
+
 char rom_path[FILENAME_MAX];
 char bios_path[FILENAME_MAX];
 console_t console;
@@ -10,15 +12,19 @@ console_t console;
 void parse_input();
 
 void setup(){
-    char* path = SDL_GetBasePath();
-
-    size(SCREEN_WIDTH, SCREEN_HEIGHT);
     setScaleMode(NEAREST);
     setTitle("TMS80");
 
     parse_input();
 
     console_init(&console, rom_path, bios_path);
+    if(console.vdp.cram_size == CRAM_SIZE_GG){
+        size(SCREEN_WIDTH_GG, SCREEN_HEIGHT_GG);
+        setWindowSize(width*1.2, height);
+    } else
+        size(SCREEN_WIDTH_SMS, SCREEN_HEIGHT_SMS);
+        
+    setAspectRatio(ASPECT_RATIO);
 
     sn76489_t* apu = &console.apu;
     apu->audioSpec.freq = 44100;
@@ -49,12 +55,17 @@ void loop(){
         }
     }
 
-    background(0);
     console_run_frame(&console);
-    if(console.vdp.regs[1] & 1)
-        printf("big sprites!\n");
-    if((console.vdp.regs[0] & (1 << 2)) && (console.vdp.regs[1] & (0b11 << 3)))
-        printf("extra height!\n");
+
+    background(0);
+    if(console.vdp.cram_size == CRAM_SIZE_GG){
+        for(int y = 0; y < height; y++)
+            for(int x = 0; x < width; x++)
+                pixels[x+y*width] = console.vdp.framebuffer[(x+GG_START_X) + (y+GG_START_Y) * SCREEN_WIDTH_SMS];
+    } else {
+        for(int i = 0; i < width*height; i++)
+            pixels[i] = console.vdp.framebuffer[i];
+    }
 }
 
 void parse_input(){

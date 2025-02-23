@@ -53,6 +53,8 @@ void loop();
 void size(int, int);
 void setTitle(const char*);
 void setWindowIcon(const char*);
+void setWindowSize(int, int);
+void setAspectRatio(float);
 Uint64 millis();
 void fullScreen();
 void background(int);
