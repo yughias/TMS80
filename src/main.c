@@ -3,8 +3,6 @@
 
 #include <string.h>
 
-#define LERP(a, b, t) (a + t * (b - a))
-
 char rom_path[FILENAME_MAX];
 char bios_path[FILENAME_MAX];
 console_t console;
