@@ -11,7 +11,7 @@ unsigned int displayWidth;
 unsigned int displayHeight;
 int width = 800;
 int height = 600;
-uint16_t* pixels;
+int* pixels;
 
 float frameRate = 60;
 unsigned int frameCount = 0;
@@ -365,7 +365,7 @@ void size(int w, int h){
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
         #endif
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-        drawBuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR555, SDL_TEXTUREACCESS_STREAMING, width, height);
+        drawBuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_STREAMING, width, height);
         SDL_LockTextureToSurface(drawBuffer, NULL, &surface);
 
         #ifndef __EMSCRIPTEN__

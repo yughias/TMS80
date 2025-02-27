@@ -29,7 +29,7 @@ extern unsigned int displayWidth;
 extern unsigned int displayHeight;
 extern int width;
 extern int height;
-extern uint16_t* pixels;
+extern int* pixels;
 
 extern float frameRate;
 extern unsigned int frameCount;
