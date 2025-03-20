@@ -33,7 +33,7 @@ void setup(){
     apu->audioDev = SDL_OpenAudioDevice(0, 0, &apu->audioSpec, &apu->audioSpec, 0);
 
     apu->push_rate_reload = console.refresh_rate * console.cycles_per_frame / apu->audioSpec.freq;
-    apu->queue_check_counter = apu->push_rate_reload * SAMPLES_PER_CALL;
+    apu->queue_check_reload = apu->push_rate_reload * SAMPLES_PER_CALL;
 
     SDL_PauseAudioDevice(apu->audioDev, 0);
     frameRate(console.refresh_rate);
