@@ -308,8 +308,13 @@ void mainloop(){
     while(SDL_PollEvent(&event)){
         switch(event.type){
             case SDL_WINDOWEVENT:
-            if(event.window.event == SDL_WINDOWEVENT_CLOSE)
-                running = 0;
+            if(event.window.event == SDL_WINDOWEVENT_CLOSE){
+                SDL_Window* win_ptr = SDL_GetWindowFromID(event.window.windowID);
+                if(win_ptr == window)
+                    running = 0;
+                else
+                    SDL_DestroyWindow(win_ptr);
+            }
             break;
 
             case SDL_KEYDOWN:

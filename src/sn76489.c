@@ -1,5 +1,7 @@
 #include "sn76489.h"
 
+#include "SDL_MAINLOOP.h"
+
 #define IS_COUNTER_REGISTER(x) (x < 6 && !(x & 1))
 #define IS_ATTENUATION_REGISTER(x) (x & 1)
 #define IS_NOISE_CONTROL_REGISTER(x) (x == 6)
@@ -116,8 +118,75 @@ sample_t sn76489_get_sample(sn76489_t* sn){
     sample_t sample = 0;
 
     for(int i = 0; i < 4; i++){
-        sample += sn->sample[i]*sn->attenuation[i];
+        uint16_t ch_sample = sn->sample[i]*sn->attenuation[i];
+        sample += ch_sample;
+        if(sn->display_idx[i] != DISPLAY_BUFFER_SIZE){
+            sn->display_buffers[i][sn->display_idx[i]++] = ch_sample;
+        }
     }
 
     return sample;
+}
+
+static void sn76489_draw_wave(int x0, int y0, uint16_t* buffer, int buffer_len, SDL_Surface* s){
+    int* pixels = (int*)s->pixels;
+    const int white = color(255, 255, 255);
+
+    int idx = 0;
+    for(idx = 1; idx < buffer_len; idx++){
+        uint16_t s0 = buffer[idx-1];
+        uint16_t s1 = buffer[idx];
+        if(!s0 && s1)
+            break;
+    }
+    
+    int prev;
+    for(int i = 0; i < s->w/2; i++){
+        int sample_idx = idx;
+        if(sample_idx >= buffer_len)
+            sample_idx = buffer_len ? buffer_len-1 : 0;
+        int sample = y0 - (buffer[sample_idx] / 50);
+        if(!i)
+            prev = sample;
+        if(sample >= prev){
+            for(int j = prev; j <= sample; j++)
+                pixels[x0 + i + j * s->w] = white;
+        } else {
+            for(int j = sample; j <= prev; j++)
+                pixels[x0 + i + j * s->w] = white;
+        }
+        idx += 1;
+        prev = sample;
+    }
+}
+
+void sn76489_draw_waves(sn76489_t* sn, SDL_Window* win){
+    SDL_Surface* s = SDL_GetWindowSurface(win);
+    if(!s)
+        return;
+    int* pixels = (int*)s->pixels;
+    SDL_FillRect(s, NULL, 0);
+
+    for(int y = 0; y < 2; y++){
+        for(int x = 0; x < 2; x++){
+            int idx =  x + y*2;
+            int x0 = x*s->w/2;
+            int y0 = y*s->h/2 + 200;
+            uint16_t* buf = sn->display_buffers[idx];
+            int buf_len = sn->display_idx[idx];
+            sn76489_draw_wave(x0, y0, buf, buf_len, s);
+        }   
+    }
+
+    const int grey = color(100, 100, 100);
+    for(int i = 0; i < s->w; i++){
+        pixels[i + s->h / 2 * s->w] = grey;
+    }
+    for(int i = 0; i < s->h; i++)
+        pixels[s->w / 2 + i * s->w] = grey;
+    
+    memset(sn->display_buffers, 0, sizeof(sn->display_buffers));
+    memset(sn->display_idx, 0, sizeof(sn->display_idx));
+
+    SDL_UpdateWindowSurface(win);
 }

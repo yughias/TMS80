@@ -7,6 +7,8 @@ char rom_path[FILENAME_MAX];
 char bios_path[FILENAME_MAX];
 console_t console;
 
+SDL_Window* apu_win;
+
 void parse_input();
 
 void setup(){
@@ -48,6 +50,14 @@ void loop(){
             if(console.type == SMS)
             console.force_paddle_controller ^= 1;
             break;
+
+            case SDLK_F3:
+            #ifndef __EMSCRIPTEN__
+            Uint32 win_id = SDL_GetWindowID(apu_win);
+            if(!win_id)
+                apu_win = SDL_CreateWindow("SN76489", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, 0);
+            break;
+            #endif
         }
     }
 
@@ -62,6 +72,10 @@ void loop(){
         for(int i = 0; i < width*height; i++)
             pixels[i] = console.vdp.framebuffer[i];
     }
+
+    #ifndef __EMSCRIPTEN__
+    sn76489_draw_waves(&console.apu, apu_win);
+    #endif
 }
 
 void parse_input(){

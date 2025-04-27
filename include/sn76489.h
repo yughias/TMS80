@@ -7,6 +7,7 @@
 #include <stdbool.h>
 
 #define SAMPLE_BUFFER_SIZE 4096
+#define DISPLAY_BUFFER_SIZE 1024
 
 #define SN76489_SMS_TAPPED_BITS 0x09
 #define SN76489_GENERIC_TAPPED_BITS 0x03
@@ -45,6 +46,9 @@ typedef struct sn76489_t {
     bool lfsr_freq2_counter;
 
     int latched_idx;
+
+    uint16_t display_buffers[4][DISPLAY_BUFFER_SIZE];
+    int display_idx[4];
 } sn76489_t;
 
 void sn76489_push_sample(sn76489_t* sn, int cycles);
@@ -52,5 +56,6 @@ sample_t sn76489_get_sample(sn76489_t* sn);
 void sn76489_update(sn76489_t* sn, int cycles);
 void sn76489_write(sn76489_t* sn, uint8_t byte);
 
+void sn76489_draw_waves(sn76489_t* sn, SDL_Window* win);
 
 #endif
