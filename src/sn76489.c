@@ -132,14 +132,27 @@ static void sn76489_draw_wave(int x0, int y0, uint16_t* buffer, int buffer_len, 
     int* pixels = (int*)s->pixels;
     const int white = color(255, 255, 255);
 
+    int avg = 0;
+    for(int i = 0; i < buffer_len; i++)
+    avg += buffer[i];
+    if(buffer_len)
+        avg /= buffer_len;
+
     int idx = 0;
-    for(idx = buffer_len / 2; idx < buffer_len; idx++){
-        uint16_t s0 = buffer[idx-1];
-        uint16_t s1 = buffer[idx];
-        if(!s0 && s1)
+    int start = -1;
+    int end = -1;
+    for(int i = s->w/4; i < buffer_len; i++){
+        uint16_t s0 = buffer[i-1];
+        uint16_t s1 = buffer[i];
+        if(s0 < avg && s1 >= avg)
+            start = i;
+        if(start != -1 && s1 < avg && s0 >= avg){
+            end = i;
             break;
+        } 
     }
 
+    idx = (start + end) / 2;
     idx -= s->w/4;
     if(idx < 0)
         idx = 0;
