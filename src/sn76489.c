@@ -133,12 +133,16 @@ static void sn76489_draw_wave(int x0, int y0, uint16_t* buffer, int buffer_len, 
     const int white = color(255, 255, 255);
 
     int idx = 0;
-    for(idx = 1; idx < buffer_len; idx++){
+    for(idx = buffer_len / 2; idx < buffer_len; idx++){
         uint16_t s0 = buffer[idx-1];
         uint16_t s1 = buffer[idx];
         if(!s0 && s1)
             break;
     }
+
+    idx -= s->w/4;
+    if(idx < 0)
+        idx = 0;
     
     int prev;
     for(int i = 0; i < s->w/2; i++){
