@@ -56,6 +56,6 @@ sample_t sn76489_get_sample(sn76489_t* sn);
 void sn76489_update(sn76489_t* sn, int cycles);
 void sn76489_write(sn76489_t* sn, uint8_t byte);
 
-void sn76489_draw_waves(sn76489_t* sn, SDL_Window* win);
+void sn76489_draw_waves(sn76489_t* sn, SDL_Window** win);
 
 #endif

@@ -160,10 +160,13 @@ static void sn76489_draw_wave(int x0, int y0, uint16_t* buffer, int buffer_len, 
     }
 }
 
-void sn76489_draw_waves(sn76489_t* sn, SDL_Window* win){
-    SDL_Surface* s = SDL_GetWindowSurface(win);
-    if(!s)
+void sn76489_draw_waves(sn76489_t* sn, SDL_Window** win){
+    Uint32 id = SDL_GetWindowID(*win);
+    if(!id){
+        *win = NULL;
         return;
+    }
+    SDL_Surface* s = SDL_GetWindowSurface(*win);
     int* pixels = (int*)s->pixels;
     SDL_FillRect(s, NULL, 0);
 
@@ -188,5 +191,5 @@ void sn76489_draw_waves(sn76489_t* sn, SDL_Window* win){
     memset(sn->display_buffers, 0, sizeof(sn->display_buffers));
     memset(sn->display_idx, 0, sizeof(sn->display_idx));
 
-    SDL_UpdateWindowSurface(win);
+    SDL_UpdateWindowSurface(*win);
 }

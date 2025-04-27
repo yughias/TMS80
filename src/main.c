@@ -74,7 +74,7 @@ void loop(){
     }
 
     #ifndef __EMSCRIPTEN__
-    sn76489_draw_waves(&console.apu, apu_win);
+    sn76489_draw_waves(&console.apu, &apu_win);
     #endif
 }
 
