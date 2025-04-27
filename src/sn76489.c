@@ -134,7 +134,7 @@ static void sn76489_draw_wave(int x0, int y0, uint16_t* buffer, int buffer_len, 
 
     int avg = 0;
     for(int i = 0; i < buffer_len; i++)
-    avg += buffer[i];
+        avg += buffer[i];
     if(buffer_len)
         avg /= buffer_len;
 
