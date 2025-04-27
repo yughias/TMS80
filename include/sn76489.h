@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define SAMPLES_PER_CALL 512
 #define SAMPLE_BUFFER_SIZE 4096
 
 #define SN76489_SMS_TAPPED_BITS 0x09
@@ -34,9 +33,6 @@ typedef struct sn76489_t {
     SDL_AudioSpec audioSpec;
     int push_rate_reload;
     int push_rate_counter;
-    int queue_check_counter;
-    int queue_check_reload;
-    int queued_samples;
     sample_t buffer[SAMPLE_BUFFER_SIZE];
     int buffer_idx;
 

@@ -28,12 +28,10 @@ void setup(){
     apu->audioSpec.freq = 44100;
     apu->audioSpec.channels = 1;
     apu->audioSpec.format = AUDIO_S16;
-    apu->audioSpec.samples = SAMPLES_PER_CALL;
     apu->audioSpec.callback = NULL;
     apu->audioDev = SDL_OpenAudioDevice(0, 0, &apu->audioSpec, &apu->audioSpec, 0);
 
     apu->push_rate_reload = console.refresh_rate * console.cycles_per_frame / apu->audioSpec.freq;
-    apu->queue_check_reload = apu->push_rate_reload * SAMPLES_PER_CALL;
 
     SDL_PauseAudioDevice(apu->audioDev, 0);
     frameRate(console.refresh_rate);

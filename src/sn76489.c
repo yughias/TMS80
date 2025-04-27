@@ -19,23 +19,27 @@ static inline bool parity(int val) {
 };
 
 void sn76489_push_sample(sn76489_t* sn, int cycles){
-    sn->queue_check_counter -= cycles;
-    if(sn->queue_check_counter <= 0){
-        sn->queue_check_counter += sn->queue_check_reload;
-        sn->queued_samples = SDL_GetQueuedAudioSize(sn->audioDev) / sizeof(sample_t);
-    }
-
     sn->push_rate_counter -= cycles;
     if(sn->push_rate_counter <= 0){
         sn->push_rate_counter += sn->push_rate_reload;
-        sample_t sample = sn76489_get_sample(sn);
-        if(sn->buffer_idx < SAMPLE_BUFFER_SIZE)
+        #ifdef __EMSCRIPTEN__
+        if(sn->buffer_idx < SAMPLE_BUFFER_SIZE){
+            sample_t sample = sn76489_get_sample(sn);
             sn->buffer[sn->buffer_idx++] = sample;
-
-        if(sn->buffer_idx && sn->queued_samples < SAMPLE_BUFFER_SIZE){
-            SDL_QueueAudio(sn->audioDev, sn->buffer, sn->buffer_idx*sizeof(sample_t));
+        }
+        if(SDL_GetQueuedAudioSize(sn->audioDev) <= SAMPLE_BUFFER_SIZE * sizeof(uint16_t)){
+            SDL_QueueAudio(sn->audioDev, sn->buffer, sn->buffer_idx * sizeof(uint16_t));
             sn->buffer_idx = 0;
         }
+        #else
+        sample_t sample = sn76489_get_sample(sn);
+        sn->buffer[sn->buffer_idx++] = sample;
+        if(sn->buffer_idx == SAMPLE_BUFFER_SIZE){
+            SDL_QueueAudio(sn->audioDev, sn->buffer, sn->buffer_idx*sizeof(uint16_t));
+            sn->buffer_idx = 0;
+            while(SDL_GetQueuedAudioSize(sn->audioDev) > SAMPLE_BUFFER_SIZE*sizeof(uint16_t));
+        }
+        #endif
     }
 }
 
