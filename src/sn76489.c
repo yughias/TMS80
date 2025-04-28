@@ -132,19 +132,26 @@ static void sn76489_draw_wave(int x0, int y0, uint16_t* buffer, int buffer_len, 
     int* pixels = (int*)s->pixels;
     const int white = color(255, 255, 255);
 
+    float avg = 0;
+    for(int i = 0; i < DISPLAY_BUFFER_SIZE; i++)
+        avg += buffer[i];
+    avg /= DISPLAY_BUFFER_SIZE;
+
     int idx = 0;
     int start = -1;
     int end = -1;
     for(int i = s->w/4; i < buffer_len; i++){
         uint16_t s0 = buffer[i-1];
         uint16_t s1 = buffer[i];
-        if(!s0 && s1)
+        if(s0 < avg && s1 >= avg)
             start = i;
-        if(start != -1 && !s1 && s0){
+        if(start != -1 && s1 < avg && s0 >= avg){
             end = i;
             break;
         } 
     }
+
+    y0 += avg / 60;
 
     if(start == -1)
         start = 0;
@@ -160,7 +167,7 @@ static void sn76489_draw_wave(int x0, int y0, uint16_t* buffer, int buffer_len, 
         int sample_idx = idx;
         if(sample_idx >= buffer_len)
             sample_idx = buffer_len ? buffer_len-1 : 0;
-        int sample = y0 - (buffer[sample_idx] / 50);
+        int sample = y0 - (buffer[sample_idx] / 60);
         if(!i)
             prev = sample;
         if(sample >= prev){
@@ -189,7 +196,7 @@ void sn76489_draw_waves(sn76489_t* sn, SDL_Window** win){
         for(int x = 0; x < 2; x++){
             int idx =  x + y*2;
             int x0 = x*s->w/2;
-            int y0 = y*s->h/2 + 200;
+            int y0 = y*s->h/2 + s->h/4;
             uint16_t* buf = sn->display_buffers[idx];
             int buf_len = sn->display_idx[idx];
             sn76489_draw_wave(x0, y0, buf, buf_len, s);
