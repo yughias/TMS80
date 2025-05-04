@@ -32,8 +32,8 @@ typedef struct lfsr_t {
 typedef struct sn76489_t {
     SDL_AudioDeviceID audioDev;
     SDL_AudioSpec audioSpec;
-    int push_rate_reload;
-    int push_rate_counter;
+    float push_rate_reload;
+    float push_rate_counter;
     sample_t buffer[SAMPLE_BUFFER_SIZE];
     int buffer_idx;
 
